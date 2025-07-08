@@ -1,0 +1,36 @@
+[
+  {
+    "string": "Hello, world!",
+    "integer": 1,
+    "float": 7.2,
+    "bool": true,
+    "enum": "B",
+    "vec": [
+      11.1,
+      2.0,
+      3.0
+    ],
+    "hash_map": {
+      "3": 3.1415927,
+      "2": 0.33333334,
+      "1": 1.0
+    }
+  },
+  {
+    "string": "Hello, world!",
+    "integer": 1,
+    "float": 7.2,
+    "bool": true,
+    "enum": "B",
+    "vec": [
+      11.1,
+      2.0,
+      3.0
+    ],
+    "hash_map": {
+      "3": 3.1415927,
+      "2": 0.33333334,
+      "1": 1.0
+    }
+  }
+]

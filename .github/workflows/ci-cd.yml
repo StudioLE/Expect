@@ -1,0 +1,244 @@
+name: CI/CD
+on:
+  push:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  CARGO_TERM_COLOR: always
+  NAME: expect
+jobs:
+
+  surveyor:
+    name: Determine Version
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.surveyor.outputs.version }}
+    steps:
+
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        fetch-tags: true
+
+    - name: Run Surveyor
+      id: surveyor
+      env:
+        GH_TOKEN: ${{ secrets.SURVEYOR_TOKEN }}
+        SURVEYOR_VERSION: v0.7.2
+      run: |
+        SURVEYOR="${{ runner.temp }}/surveyor"
+        gh release download "${SURVEYOR_VERSION}" \
+          --repo StudioLE/Surveyor \
+          --pattern "Surveyor-linux-x64-${SURVEYOR_VERSION}" \
+          --output "${SURVEYOR}"
+        chmod +x "${SURVEYOR}"
+        VERSION=$("${SURVEYOR}" version)
+        "${SURVEYOR}" release-notes > "${{ runner.temp }}/release-notes.md"
+        echo "version=${VERSION}" >> $GITHUB_OUTPUT
+        echo "${VERSION}"
+
+    - run: echo "# ${{ steps.surveyor.outputs.version}}" >> $GITHUB_STEP_SUMMARY
+
+    - run: cat ${{ runner.temp }}/release-notes.md >> $GITHUB_STEP_SUMMARY
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: release-notes.md
+        path: ${{ runner.temp }}/release-notes.md
+
+    - run: /home/linuxbrew/.linuxbrew/bin/brew install cargo-edit
+      if: steps.surveyor.outputs.version != ''
+
+    - run: /home/linuxbrew/.linuxbrew/bin/cargo-set-version set-version ${{ steps.surveyor.outputs.version }}
+      if: steps.surveyor.outputs.version != ''
+
+    - run: git --no-pager diff --color
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: Cargo.toml
+        path: Cargo.toml
+
+
+  build:
+    name: Build
+    runs-on: ubuntu-24.04
+    needs:
+    - surveyor
+    steps:
+
+    - name: Checkout Repo
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        fetch-tags: true
+
+    - name: Restore Cargo
+      id: cargo-cache
+      uses: actions/cache/restore@v4
+      with:
+        key: cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-${{ needs.surveyor.outputs.version }}
+        restore-keys: |
+          cargo-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}-
+          cargo-${{ runner.os }}-
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+
+    - uses: actions/download-artifact@v4
+      with:
+        name: Cargo.toml
+
+    - name: Build
+      run: cargo build --release
+
+    - name: Test
+      run: cargo test --release
+
+    - name: Cache Cargo
+      if: always()
+      uses: actions/cache/save@v4
+      with:
+        key: ${{ steps.cargo-cache.outputs.cache-primary-key }}
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+
+    - name: Git Config
+      run: |
+        git config user.name "CI/CD"
+        git config user.email "cicd.tbxeq@passmail.com"
+
+    - name: Cargo Format
+      run: |
+        cargo fmt
+        git add --all -- ':!Cargo.toml' ':!Cargo.lock'
+        if ! git diff --cached --exit-code
+        then
+          echo "::warning title=Cargo Format::Please review the output for details."
+          git commit -m "style: Apply code style with \`cargo fmt\`"
+        fi
+      continue-on-error: true
+
+    - name: Cargo Fix
+      run: |
+        cargo fix --release --allow-dirty --message-format short
+        cargo fmt
+        git add --all -- ':!Cargo.toml' ':!Cargo.lock'
+        if ! git diff --cached --exit-code
+        then
+          echo "::warning title=Cargo Fix::Please review the output for details."
+          git commit -m "style: Apply code style with \`cargo fix\`"
+        fi
+      continue-on-error: true
+
+    - name: Cargo Clippy
+      run: |
+        cargo clippy --release --fix --allow-dirty --message-format short
+        cargo fmt
+        git add --all -- ':!Cargo.toml' ':!Cargo.lock'
+        if ! git diff --cached --exit-code
+        then
+          echo "::warning title=Cargo Clippy::Please review the output for details."
+          git commit -m "style: Apply code style with \`cargo clippy --fix\`"
+        fi
+      continue-on-error: true
+
+    - name: Git Status
+      run: git status
+
+    - name: Git Push
+      run: git push
+
+  git-tag:
+    name: Tag
+    runs-on: ubuntu-24.04
+    if: needs.surveyor.outputs.version != '' && contains(needs.surveyor.outputs.version, '-')
+    needs:
+    - surveyor
+    - build
+    steps:
+
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        fetch-tags: true
+
+    - name: git config
+      run: |
+        git config user.name "CI/CD"
+        git config user.email "cicd.tbxeq@passmail.com"
+
+    - name: git tag
+      run: git tag "v${{ needs.surveyor.outputs.version }}"
+
+    - name: git push
+      run: git push origin "v${{ needs.surveyor.outputs.version }}"
+
+
+  github-release:
+    name: GitHub Release
+    runs-on: ubuntu-24.04
+    if: needs.surveyor.outputs.version != '' && ! contains(needs.surveyor.outputs.version, '-')
+    needs:
+    - surveyor
+    - build
+    steps:
+
+    - uses: actions/checkout@v4
+
+    - uses: actions/download-artifact@v4
+      with:
+        name: release-notes.md
+
+    - name: Create Release
+      if: needs.surveyor.outputs.version != '' && ! contains(needs.surveyor.outputs.version, '-')
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: >
+        gh release create
+        "v${{ needs.surveyor.outputs.version }}"
+        --title "v${{ needs.surveyor.outputs.version }}"
+        --notes-file "release-notes.md"
+        --target ${{ github.ref_name }}
+
+    - name: Create Prerelease
+      if: needs.surveyor.outputs.version != '' && contains(needs.surveyor.outputs.version, '-')
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: >
+        gh release create
+        "v${{ needs.surveyor.outputs.version }}"
+        --title "v${{ needs.surveyor.outputs.version }}"
+        --notes-file "release-notes.md"
+        --target ${{ github.ref_name }}
+        --prerelease
+
+
+  publish:
+    name: Publish
+    runs-on: ubuntu-24.04
+    if: needs.surveyor.outputs.version != '' && contains(needs.surveyor.outputs.version, '-') == false
+    needs:
+    - surveyor
+    - build
+    steps:
+
+    - uses: actions/checkout@v4
+
+    - uses: actions/download-artifact@v4
+      with:
+        name: Cargo.toml
+
+    - run: git --no-pager diff --color
+
+    - run: cargo publish --allow-dirty --no-verify
+      env:
+        CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}

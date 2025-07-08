@@ -1,6 +1,6 @@
 # Expect
 
-Compare tests results against expected values.
+Compare test results against expected values.
 
 Inspried by [StudioLE.Verify](https://github.com/StudioLE/Verify) and [Verify](https://github.com/VerifyTests/Verify).
 
