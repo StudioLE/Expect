@@ -15,7 +15,7 @@ impl Expect {
     pub(crate) fn read_expected_serialized<T: DeserializeOwned>(
         &mut self,
     ) -> Result<T, ExpectError> {
-        let serializer = DefaultSerializer::get();
+        let serializer = DefaultSerializer::default();
         let reader = self.get_expected_reader(serializer.get_extension())?;
         serializer.deserialize(reader)
     }

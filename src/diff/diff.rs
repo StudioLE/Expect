@@ -65,7 +65,7 @@ impl Diff {
 }
 
 fn display_value<T: Debug + Serialize>(value: &T) -> String {
-    let serializer = DefaultSerializer::get();
+    let serializer = DefaultSerializer::default();
     serializer
         .serialize_to_string(value)
         .unwrap_or_else(|_| format!("{value:?}"))

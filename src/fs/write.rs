@@ -19,7 +19,7 @@ impl Expect {
         &mut self,
         actual: &T,
     ) -> Result<(), ExpectError> {
-        let serializer = DefaultSerializer::get();
+        let serializer = DefaultSerializer::default();
         let writer = self.get_actual_writer(serializer.get_extension())?;
         serializer.serialize(writer, actual)
     }
@@ -58,7 +58,7 @@ mod tests {
         // Arrange
         let mut expect = Expect::new();
         let actual = SampleStruct::sample();
-        let extension = DefaultSerializer::get().get_extension();
+        let extension = DefaultSerializer::default().get_extension();
         let path = expect.get_actual_path(extension);
         if path.exists() {
             remove_file(&path).expect("Should be able to remove file");
