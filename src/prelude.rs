@@ -6,6 +6,7 @@ pub(crate) use crate::expect::*;
 pub(crate) use crate::fs::*;
 #[cfg(test)]
 pub(crate) use crate::samples::value::*;
+pub(crate) use crate::serialization::*;
 pub(crate) use colored::Colorize;
 pub(crate) use serde::de::DeserializeOwned;
 pub(crate) use serde::{Deserialize, Serialize};

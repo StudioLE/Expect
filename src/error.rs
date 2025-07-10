@@ -10,12 +10,12 @@ pub enum ExpectError {
     CreateSubDir(std::io::Error, PathBuf),
     WriteActual(std::io::Error),
     CreateActual(std::io::Error, PathBuf),
-    SerializeActual(serde_json::Error),
+    SerializeActual(Box<dyn Error>),
     FlushActual(std::io::Error),
     CopyActual(std::io::Error, PathBuf, PathBuf),
     OpenExpected(std::io::Error, PathBuf),
     ReadExpected(std::io::Error),
-    DeserializeExpected(serde_json::Error),
+    DeserializeExpected(Box<dyn Error>),
 }
 
 impl Display for ExpectError {
@@ -41,7 +41,7 @@ impl Display for ExpectError {
             ExpectError::SerializeActual(e) => {
                 format!(
                     "Could not serialize actual results file.\n{}",
-                    format_error(e),
+                    format_error(e.as_ref()),
                 )
             }
             ExpectError::FlushActual(e) => {
@@ -64,7 +64,7 @@ impl Display for ExpectError {
             ExpectError::DeserializeExpected(e) => {
                 format!(
                     "Could not deserialize expected results file.\n{}",
-                    format_error(e),
+                    format_error(e.as_ref()),
                 )
             }
         };
@@ -76,6 +76,6 @@ fn format_path(path: &Path) -> ColoredString {
     path.display().to_string().dimmed()
 }
 
-fn format_error<E: Error>(error: &E) -> ColoredString {
+fn format_error<E: Error + ?Sized>(error: &E) -> ColoredString {
     error.to_string().dimmed()
 }

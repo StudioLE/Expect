@@ -65,7 +65,10 @@ impl Diff {
 }
 
 fn display_value<T: Debug + Serialize>(value: &T) -> String {
-    serde_json::to_string_pretty(value).unwrap_or_else(|_| format!("{value:?}"))
+    let serializer = DefaultSerializer::get();
+    serializer
+        .serialize_to_string(value)
+        .unwrap_or_else(|_| format!("{value:?}"))
 }
 
 fn print_actual(actual: &str) {
