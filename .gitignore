@@ -3,3 +3,4 @@
 **/*.rs.bk
 **/.expect/**/*.actual.json
 **/.expect/**/*.actual.txt
+**/.expect/**/*.actual.yaml

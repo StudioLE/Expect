@@ -33,8 +33,8 @@ impl Expect {
         actual: &T,
     ) -> Result<bool, ExpectError> {
         self.verify_dirs()?;
-        self.write_actual_json(&actual)?;
-        let expected = self.read_expected_json::<T>()?;
+        self.write_actual_serialized(&actual)?;
+        let expected: T = self.read_expected_serialized()?;
         Ok(Diff::value(actual, &expected))
     }
 
@@ -44,8 +44,8 @@ impl Expect {
         actual: &[T],
     ) -> Result<bool, ExpectError> {
         self.verify_dirs()?;
-        self.write_actual_json(&actual)?;
-        let expected = self.read_expected_json::<Vec<T>>()?;
+        self.write_actual_serialized(&actual)?;
+        let expected: Vec<T> = self.read_expected_serialized()?;
         Ok(Diff::values(actual, &expected))
     }
 }

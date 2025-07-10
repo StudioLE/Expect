@@ -12,9 +12,12 @@ impl Expect {
     }
 
     /// Read and deserialize the expected results file.
-    pub(crate) fn read_expected_json<T: DeserializeOwned>(&mut self) -> Result<T, ExpectError> {
-        let reader = self.get_expected_reader(JSON_EXT)?;
-        serde_json::from_reader(reader).map_err(ExpectError::DeserializeExpected)
+    pub(crate) fn read_expected_serialized<T: DeserializeOwned>(
+        &mut self,
+    ) -> Result<T, ExpectError> {
+        let serializer = DefaultSerializer::get();
+        let reader = self.get_expected_reader(serializer.get_extension())?;
+        serializer.deserialize(reader)
     }
 
     /// Get a [`BufReader`] for the expected results file.
@@ -47,12 +50,12 @@ mod tests {
     }
 
     #[test]
-    fn read_expected_json() -> Result<(), ExpectError> {
+    fn read_expected_serialized() -> Result<(), ExpectError> {
         // Arrange
         let mut expect = Expect::new();
         let expected = SampleStruct::sample();
         // Act
-        let result: SampleStruct = expect.read_expected_json()?;
+        let result: SampleStruct = expect.read_expected_serialized()?;
         // Assert
         assert_eq!(result, expected);
         Ok(())

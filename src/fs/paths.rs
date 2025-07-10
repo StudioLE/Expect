@@ -3,7 +3,6 @@ use crate::prelude::*;
 pub(crate) const EXPECT_DIR: &str = ".expect";
 pub(crate) const ACTUAL_EXT: &str = "actual";
 pub(crate) const EXPECT_EXT: &str = "expect";
-pub(crate) const JSON_EXT: &str = "json";
 #[cfg(test)]
 pub(crate) const TEXT_EXT: &str = "txt";
 
@@ -90,12 +89,12 @@ mod tests {
         // Arrange
         let expect = Expect::new();
         // Act
-        let path = expect.get_actual_path(JSON_EXT);
+        let path = expect.get_actual_path(TEXT_EXT);
         // Assert
         assert_eq!(
             path,
             PathBuf::from(format!(
-                "src/fs/{EXPECT_DIR}/paths/get_actual_path.{ACTUAL_EXT}.{JSON_EXT}"
+                "src/fs/{EXPECT_DIR}/paths/get_actual_path.{ACTUAL_EXT}.{TEXT_EXT}"
             ))
         );
     }
@@ -105,12 +104,12 @@ mod tests {
         // Arrange
         let expect = Expect::new();
         // Act
-        let path = expect.get_expected_path(JSON_EXT);
+        let path = expect.get_expected_path(TEXT_EXT);
         // Assert
         assert_eq!(
             path,
             PathBuf::from(format!(
-                "src/fs/{EXPECT_DIR}/paths/get_expected_path.{EXPECT_EXT}.{JSON_EXT}"
+                "src/fs/{EXPECT_DIR}/paths/get_expected_path.{EXPECT_EXT}.{TEXT_EXT}"
             ))
         );
     }

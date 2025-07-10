@@ -15,14 +15,13 @@ impl Expect {
     }
 
     /// Serialize the actual results and write to a file.
-    pub(crate) fn write_actual_json<T: Serialize>(
+    pub(crate) fn write_actual_serialized<T: Serialize>(
         &mut self,
         actual: &T,
     ) -> Result<(), ExpectError> {
-        let mut writer = self.get_actual_writer(JSON_EXT)?;
-        serde_json::to_writer_pretty(&mut writer, actual).map_err(ExpectError::SerializeActual)?;
-        writer.flush().map_err(ExpectError::FlushActual)?;
-        Ok(())
+        let serializer = DefaultSerializer::get();
+        let writer = self.get_actual_writer(serializer.get_extension())?;
+        serializer.serialize(writer, actual)
     }
 
     /// Get a [`BufWriter`] for the actual results file.
@@ -55,16 +54,17 @@ mod tests {
     }
 
     #[test]
-    fn write_actual_json() -> Result<(), ExpectError> {
+    fn write_actual_serialized() -> Result<(), ExpectError> {
         // Arrange
         let mut expect = Expect::new();
         let actual = SampleStruct::sample();
-        let path = expect.get_actual_path(JSON_EXT);
+        let extension = DefaultSerializer::get().get_extension();
+        let path = expect.get_actual_path(extension);
         if path.exists() {
             remove_file(&path).expect("Should be able to remove file");
         }
         // Act
-        expect.write_actual_json(&actual)?;
+        expect.write_actual_serialized(&actual)?;
         // Assert
         let result = read_to_string(path).expect("Should be able to read file");
         assert!(!result.is_empty());
